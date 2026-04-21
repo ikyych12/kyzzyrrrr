@@ -57,7 +57,8 @@ export const Input: React.FC<{
   icon?: React.ReactNode;
   required?: boolean;
   className?: string;
-}> = ({ label, type = 'text', value, onChange, placeholder, icon, required, className }) => (
+  inputClassName?: string;
+}> = ({ label, type = 'text', value, onChange, placeholder, icon, required, className, inputClassName }) => (
   <div className={cn("space-y-2", className)}>
     {label && <label className="text-xs font-bold text-slate-500 ml-1 uppercase tracking-widest">{label}</label>}
     <div className="relative group">
@@ -70,7 +71,8 @@ export const Input: React.FC<{
         required={required}
         className={cn(
           "w-full bg-white/[0.04] border border-white/5 rounded-2xl px-5 py-4 focus:outline-none focus:border-brand-purple/50 focus:bg-brand-purple/[0.02] transition-all placeholder:text-slate-600 font-medium",
-          icon && "pl-14"
+          icon && "pl-14",
+          inputClassName
         )}
       />
     </div>

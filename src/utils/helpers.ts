@@ -37,7 +37,18 @@ export const storage = {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   },
   initAdmin: () => {
-    const users = storage.getUsers();
+    let users = storage.getUsers();
+    
+    // Migration: ensure all users have a password (default to their nomor if missing)
+    let migrated = false;
+    users = users.map(u => {
+      if (!u.password) {
+        migrated = true;
+        return { ...u, password: u.nomor };
+      }
+      return u;
+    });
+
     const adminExists = users.find(u => u.username === "ikyy");
     if (!adminExists) {
       const admin: User = {
@@ -54,7 +65,12 @@ export const storage = {
         telegramId: "6926037855",
         hasSeenOnboarding: true
       };
-      storage.setUsers([...users, admin]);
+      users.push(admin);
+      migrated = true;
+    }
+
+    if (migrated) {
+      storage.setUsers(users);
     }
   }
 };
