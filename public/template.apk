@@ -1,0 +1,10 @@
+PK      
+Kyzzyy Cloud Build V2 Artifact
+==============================
+App: {{APP_NAME}}
+Package: {{PACKAGE_NAME}}
+Version: {{VERSION}}
+
+This is a professional simulation file. 
+In a production deployment, this would be a signed Android binary compiled via Gradle.
+Generated at: 2026-04-20
