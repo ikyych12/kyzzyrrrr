@@ -53,10 +53,23 @@ export class WhatsAppService {
 
       if (connection === 'close') {
         this.status = 'disconnected';
-        const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-        console.log('WA Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
+        const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+        const errorMessage = (lastDisconnect?.error as Error)?.message || '';
+        
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+        
+        console.log(`WA Connection closed. Status: ${statusCode}, Error: ${errorMessage}, Reconnecting: ${shouldReconnect}`);
+        
+        if (errorMessage.includes('QR refs attempts ended')) {
+          console.warn('Detected QR failure loop, cleaning session...');
+          fs.removeSync(path.join(process.cwd(), 'sessions/wa-session'));
+        }
+
         if (shouldReconnect) {
-          this.init();
+          // Add a small delay to prevent rapid-fire reconnection on persistent errors
+          setTimeout(() => {
+            this.init();
+          }, 5000);
         }
       } else if (connection === 'open') {
         this.status = 'connected';
@@ -103,6 +116,44 @@ export class WhatsAppService {
 
   getStatus() {
     return this.status;
+  }
+
+  async blast(numbers: string[], message: string, onProgress: (progress: any) => void) {
+    if (this.status !== 'connected') throw new Error('WhatsApp not connected');
+    
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < numbers.length; i++) {
+      const num = numbers[i].trim();
+      if (!num) continue;
+
+      const jid = num.includes('@s.whatsapp.net') ? num : `${num.replace(/[^0-9]/g, '')}@s.whatsapp.net`;
+      
+      try {
+        await this.socket.sendMessage(jid, { text: message });
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to send to ${num}:`, err);
+        failCount++;
+      }
+
+      onProgress({
+        current: i + 1,
+        total: numbers.length,
+        successCount,
+        failCount,
+        lastNumber: num
+      });
+
+      // Randomized delay between 3-7 seconds to be safer
+      if (i < numbers.length - 1) {
+        const delay = Math.floor(Math.random() * 4000) + 3000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    return { successCount, failCount };
   }
   
   async logout() {

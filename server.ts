@@ -148,6 +148,17 @@ if (botToken && botToken !== "YOUR_BOT_TOKEN") {
   console.log("⚠️ No Telegram Bot token provided, skipping bot launch.");
 }
 
+// Global Blast State
+let isBlasting = false;
+let blastProgress = {
+  current: 0,
+  total: 0,
+  successCount: 0,
+  failCount: 0,
+  lastNumber: '',
+  status: 'idle' as 'idle' | 'running' | 'completed' | 'error'
+};
+
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.SERVER_PORT || process.env.PORT || 3000);
@@ -417,6 +428,51 @@ async function startServer() {
     } catch (error) {
       res.status(500).json({ error: "Failed to logout" });
     }
+  });
+
+  // Blast Routes
+  app.get("/api/wa/blast-status", (req, res) => {
+    res.json(blastProgress);
+  });
+
+  app.post("/api/wa/start-blast", async (req, res) => {
+    const { numbers, message } = req.body;
+    if (!numbers || !Array.isArray(numbers) || numbers.length === 0) {
+      return res.status(400).json({ error: "Invalid numbers list" });
+    }
+    if (!message) return res.status(400).json({ error: "Message is required" });
+
+    if (waService.getStatus() !== 'connected') {
+      return res.status(400).json({ error: "WhatsApp not connected" });
+    }
+
+    if (isBlasting) {
+      return res.status(400).json({ error: "Another blast is already running" });
+    }
+
+    isBlasting = true;
+    blastProgress = {
+      current: 0,
+      total: numbers.length,
+      successCount: 0,
+      failCount: 0,
+      lastNumber: '',
+      status: 'running'
+    };
+
+    // Run in background
+    waService.blast(numbers, message, (progress) => {
+      blastProgress = { ...progress, status: 'running' };
+    }).then(() => {
+      blastProgress.status = 'completed';
+      isBlasting = false;
+    }).catch(err => {
+      console.error("Blast error:", err);
+      blastProgress.status = 'error';
+      isBlasting = false;
+    });
+
+    res.json({ status: "started" });
   });
 
   // Serve static files from public directory

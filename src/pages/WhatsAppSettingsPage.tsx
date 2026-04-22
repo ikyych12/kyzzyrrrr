@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Input } from '../components/UI';
-import { Phone, CheckCircle2, XCircle, RefreshCw, LogOut, Smartphone, MessageSquare } from 'lucide-react';
+import { Phone, CheckCircle2, XCircle, RefreshCw, LogOut, Smartphone, MessageSquare, Play, List, Send, Target, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -11,15 +11,60 @@ export const WhatsAppSettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
+  // Blast State
+  const [blastNumbers, setBlastNumbers] = useState('');
+  const [blastMessage, setBlastMessage] = useState('Halo! Ini adalah pesan tes dari Kyzzyy WA Gateway.');
+  const [progress, setProgress] = useState<any>(null);
+
   const fetchStatus = async () => {
     try {
       const res = await fetch('/api/wa/status');
       const data = await res.json();
       setStatus(data.status);
+
+      // Also fetch blast status if running
+      const blastRes = await fetch('/api/wa/blast-status');
+      const blastData = await blastRes.json();
+      if (blastData.status === 'running' || blastData.status === 'completed') {
+        setProgress(blastData);
+      }
     } catch (err) {
       console.error('Failed to fetch status:', err);
     } finally {
       setChecking(false);
+    }
+  };
+
+  const startBlast = async () => {
+    if (status !== 'connected') {
+      toast.error('WhatsApp belum terhubung!');
+      return;
+    }
+
+    const numbers = blastNumbers.split('\n').map(n => n.trim()).filter(n => n !== '');
+    if (numbers.length === 0) {
+      toast.error('Masukkan minimal 1 nomor tujuan');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/wa/start-blast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numbers, message: blastMessage })
+      });
+      const data = await res.json();
+      if (data.status === 'started') {
+        toast.success('Blast dimulai di latar belakang!');
+        setProgress({ status: 'running', current: 0, total: numbers.length, successCount: 0, failCount: 0 });
+      } else {
+        toast.error(data.error || 'Gagal memulai blast');
+      }
+    } catch (err) {
+      toast.error('Kesalahan sistem');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -254,6 +299,128 @@ export const WhatsAppSettingsPage: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* Blast Tester Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        <Card className="p-8 border-white/5 bg-white/[0.02] backdrop-blur-3xl space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500">
+                <Send className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black italic tracking-tight uppercase">Blast Tester</h3>
+                <p className="text-xs text-slate-500 font-medium font-mono uppercase">Warm up & verification tool</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">Daftar Nomor (1 per baris)</label>
+                <textarea 
+                  value={blastNumbers}
+                  onChange={(e) => setBlastNumbers(e.target.value)}
+                  placeholder="628xxxxxx&#10;628xxxxxx"
+                  className="w-full h-40 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-mono focus:border-brand-purple/50 focus:outline-none transition-all resize-none"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">Pesan Blast</label>
+                <Input 
+                  value={blastMessage}
+                  onChange={setBlastMessage}
+                  placeholder="Masukkan pesan..."
+                  icon={<MessageSquare className="w-5 h-5 text-brand-purple" />}
+                />
+              </div>
+
+              <div className="p-4 bg-orange-500/5 border border-orange-500/10 rounded-2xl flex items-start gap-4">
+                <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
+                <p className="text-[10px] text-orange-200/60 font-medium leading-relaxed">
+                  <span className="text-orange-500 font-bold">WARNING:</span> Gunakan dengan bijak. Jeda otomatis 3-7 detik telah diterapkan untuk mengurangi risiko deteksi spam. Disarankan tidak melebihi 20 nomor per sesi.
+                </p>
+              </div>
+
+              <Button 
+                onClick={startBlast}
+                disabled={loading || status !== 'connected' || progress?.status === 'running'}
+                className="w-full h-14 rounded-2xl uppercase font-black tracking-widest gap-2 bg-orange-500 hover:bg-orange-600 border-none"
+              >
+                <Play className="w-4 h-4 fill-current" /> {progress?.status === 'running' ? 'BLASTING...' : 'START BLAST NOW'}
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Progress Card */}
+        <Card className="p-8 border-white/5 bg-white/[0.02] backdrop-blur-3xl flex flex-col items-center justify-center text-center space-y-6">
+          {!progress ? (
+            <div className="space-y-4 opacity-30">
+               <div className="w-20 h-20 bg-white/5 rounded-[2rem] flex items-center justify-center mx-auto">
+                 <Target className="w-10 h-10" />
+               </div>
+               <p className="text-sm font-black uppercase italic text-slate-500 tracking-tighter">No Active Blast Progress</p>
+            </div>
+          ) : (
+            <div className="w-full space-y-8">
+              <div className="relative">
+                <svg className="w-48 h-48 mx-auto -rotate-90">
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="80"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    fill="transparent"
+                    className="text-white/5"
+                  />
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="80"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    fill="transparent"
+                    strokeDasharray={502.4}
+                    strokeDashoffset={502.4 - (502.4 * (progress.current / progress.total))}
+                    className="text-brand-purple transition-all duration-500 ease-out"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-4xl font-black italic">{Math.round((progress.current / progress.total) * 100)}%</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{progress.current} / {progress.total}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+                  <p className="text-2xl font-black text-emerald-500">{progress.successCount}</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Berhasil</p>
+                </div>
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+                  <p className="text-2xl font-black text-red-500">{progress.failCount}</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Gagal</p>
+                </div>
+              </div>
+
+              {progress.lastNumber && (
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-1">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Last Activity</p>
+                  <p className="text-xs font-mono text-brand-purple truncate">Sending to: {progress.lastNumber}</p>
+                </div>
+              )}
+
+              {progress.status === 'completed' && (
+                <div className="flex items-center justify-center gap-2 text-emerald-500 font-black uppercase text-xs italic tracking-widest animate-pulse">
+                  <CheckCircle2 className="w-4 h-4" /> Blast Completed
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );
