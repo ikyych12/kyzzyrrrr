@@ -49,6 +49,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 
   if (user?.role === 'admin') {
     menuItems.push({ name: 'Admin Panel', path: '/admin', icon: Code });
+    menuItems.push({ name: 'WA Gateway', path: '/admin/whatsapp', icon: Smartphone });
   }
 
   return (

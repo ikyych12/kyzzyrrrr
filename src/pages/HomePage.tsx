@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Card, Badge } from '../components/UI';
 import { Link } from 'react-router-dom';
-import { User as UserIcon, ShieldCheck, BookOpen, Lightbulb, Ban, Crown, Code, Play, Smartphone, History, ThumbsUp } from 'lucide-react';
+import { User as UserIcon, ShieldCheck, BookOpen, Lightbulb, Ban, Crown, Code, Play, Smartphone, History, ThumbsUp, Search, Flame, ShoppingCart, Database } from 'lucide-react';
 import { motion } from 'motion/react';
 import { formatRemainingTime } from '../utils/helpers';
 
@@ -16,6 +16,8 @@ export const HomePage: React.FC = () => {
     { title: 'Cek Umur Akun', icon: History, path: '/account-age', color: 'text-brand-gold', desc: 'Lacak tanggal join & register' },
     { title: 'Profil', icon: UserIcon, path: '/profile', color: 'text-blue-400', desc: 'Lihat informasi akun' },
     { title: 'Badak WA', icon: ShieldCheck, path: '/badak-wa', color: 'text-brand-purple', desc: 'Spam WhatsApp stabil' },
+    { title: 'Kyzzy Store', icon: ShoppingCart, path: '/store', color: 'text-emerald-400', desc: 'Sewa VPS & Panel hosting termurah' },
+    { title: 'NIK Checker', icon: Search, path: '/nik-checker', color: 'text-cyan-400', desc: 'Cek data KTP via NIK (Indonesia)' },
     { title: 'Rekomendasi Blast', icon: ThumbsUp, path: '/recommendations', color: 'text-emerald-400', desc: 'Layanan blast terbaik & terpercaya' },
     { title: 'Tutorial Blast', icon: BookOpen, path: '/tutorial', color: 'text-emerald-400', desc: 'Cara blast yang benar' },
     { title: 'Tips Blast', icon: Lightbulb, path: '/tips', color: 'text-amber-400', desc: 'Tips aman anti banned' },

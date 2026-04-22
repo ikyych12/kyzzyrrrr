@@ -5,6 +5,7 @@ import { LoginPage, RegisterPage } from './pages/AuthPages';
 import { HomePage } from './pages/HomePage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminPanelPage } from './pages/AdminPanelPage';
+import { WhatsAppSettingsPage } from './pages/WhatsAppSettingsPage';
 import { BadakWAPage } from './pages/BadakWAPage';
 import { WebToAPKPage } from './pages/WebToAPKPage';
 import { TutorialPage } from './pages/TutorialPage';
@@ -15,6 +16,8 @@ import { RecommendationsPage } from './pages/RecommendationsPage';
 import { DeveloperPage } from './pages/DeveloperPage';
 import { AnimeDiscoveryPage } from './pages/AnimeDiscoveryPage';
 import { AnimeWatchPage } from './pages/AnimeWatchPage';
+import { NIKCheckerPage } from './pages/NIKCheckerPage';
+import { KyzzyStorePage } from './pages/KyzzyStorePage';
 import { DynamicTitle } from './components/DynamicTitle';
 
 export default function App() {
@@ -26,6 +29,7 @@ export default function App() {
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/store" element={<KyzzyStorePage />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
@@ -40,11 +44,13 @@ export default function App() {
             <Route path="/recommendations" element={<RecommendationsPage />} />
             <Route path="/anime" element={<AnimeDiscoveryPage />} />
             <Route path="/anime/:id" element={<AnimeWatchPage />} />
+            <Route path="/nik-checker" element={<NIKCheckerPage />} />
             <Route path="/developer" element={<DeveloperPage />} />
             
             {/* Admin Only Routes */}
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<AdminPanelPage />} />
+              <Route path="/admin/whatsapp" element={<WhatsAppSettingsPage />} />
             </Route>
           </Route>
 

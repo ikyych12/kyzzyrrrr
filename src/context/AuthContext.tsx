@@ -17,14 +17,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    storage.initAdmin();
-    const current = storage.getCurrentUser();
-    if (current) {
-      const checkedUser = checkPremiumStatus(current);
-      setUser(checkedUser);
-      storage.setCurrentUser(checkedUser);
-    }
-    setIsLoading(false);
+    const init = async () => {
+      await storage.syncFromServer();
+      storage.initAdmin();
+      const current = storage.getCurrentUser();
+      if (current) {
+        const checkedUser = checkPremiumStatus(current);
+        setUser(checkedUser);
+        storage.setCurrentUser(checkedUser);
+      }
+      setIsLoading(false);
+    };
+    init();
   }, []);
 
   const login = (userData: User) => {

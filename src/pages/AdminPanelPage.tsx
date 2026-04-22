@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Badge, Button, Input } from '../components/UI';
-import { Shield, Users, Crown, Search, Trash2, ShieldCheck, ShieldX, Info, Phone, Calendar, User, Eye, X, Send, Gift, Activity, Ban, Unlock, Cpu } from 'lucide-react';
+import { Shield, Users, Crown, Search, Trash2, ShieldCheck, ShieldX, Info, Phone, Calendar, User, Eye, X, Send, Gift, Activity, Ban, Unlock, Cpu, Database, Zap } from 'lucide-react';
 import { storage, calculateExpiry, formatRemainingTime, cn } from '../utils/helpers';
 import { User as UserType, PremiumType } from '../types';
 import toast from 'react-hot-toast';
@@ -160,6 +160,42 @@ export const AdminPanelPage: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      <Card className="p-8 space-y-6 relative overflow-hidden border-brand-purple/20 bg-brand-purple/5">
+        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+          <Gift className="w-32 h-32" />
+        </div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+             <h3 className="text-xl font-black italic uppercase tracking-tighter flex items-center gap-2">
+               <Database className="w-5 h-5 text-brand-purple" /> Panel Hosting Discount
+             </h3>
+             <p className="text-xs text-slate-400 font-medium">Atur persentase diskon harga untuk semua paket Panel Hosting.</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="w-32 text-right">
+              <p className="text-2xl font-black text-brand-purple">{appSettings.panelDiscount || 0}%</p>
+              <p className="text-[10px] text-slate-500 font-bold uppercase">Discount</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[0, 10, 20, 30, 50].map((val) => (
+                <button
+                  key={val}
+                  onClick={() => handleUpdateSettings({ ...appSettings, panelDiscount: val })}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                    (appSettings.panelDiscount || 0) === val 
+                      ? "bg-brand-purple text-white border-brand-purple shadow-[0_0_15px_rgba(168,85,247,0.4)]" 
+                      : "bg-white/5 text-slate-500 border-white/10 hover:border-white/20"
+                  )}
+                >
+                  {val}%
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <Card className="p-8 space-y-6 relative overflow-hidden border-brand-purple/20 bg-brand-purple/5">
         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">

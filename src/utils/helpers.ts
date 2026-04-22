@@ -17,6 +17,12 @@ export const storage = {
   },
   setUsers: (users: User[]) => {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    // Push in background
+    fetch('/api/db/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(users)
+    }).catch(console.error);
   },
   getCurrentUser: (): User | null => {
     const data = localStorage.getItem(CURRENT_USER_KEY);
@@ -31,10 +37,43 @@ export const storage = {
   },
   getSettings: () => {
     const data = localStorage.getItem(SETTINGS_KEY);
-    return data ? JSON.parse(data) : { webToApkAccess: 'all' };
+    return data ? JSON.parse(data) : { webToApkAccess: 'all', panelDiscount: 0 };
   },
   setSettings: (settings: any) => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    // Push in background
+    fetch('/api/db/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    }).catch(console.error);
+  },
+  syncFromServer: async () => {
+    try {
+      const [usersRes, settingsRes] = await Promise.all([
+        fetch('/api/db/users'),
+        fetch('/api/db/settings')
+      ]);
+      const users = await usersRes.json();
+      const settings = await settingsRes.json();
+      
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      
+      // Update current user if exists
+      const current = localStorage.getItem(CURRENT_USER_KEY);
+      if (current) {
+        const currentUser = JSON.parse(current);
+        const updated = users.find((u: any) => u.id === currentUser.id);
+        if (updated) {
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated));
+        }
+      }
+      return { users, settings };
+    } catch (err) {
+      console.error("Sync failed:", err);
+      return null;
+    }
   },
   initAdmin: () => {
     let users = storage.getUsers();

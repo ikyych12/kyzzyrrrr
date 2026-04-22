@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Lock, Phone, RefreshCw, AlertCircle, Send, CheckCircle2, ExternalLink, Info, Gift } from 'lucide-react';
+import { User, Lock, Phone, RefreshCw, AlertCircle, Send, CheckCircle2, ExternalLink, Info, Gift, Smartphone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storage, cn } from '../utils/helpers';
 import { Card, Button, Input } from '../components/UI';
