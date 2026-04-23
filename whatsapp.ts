@@ -58,15 +58,29 @@ export class WhatsAppService {
         
         let shouldReconnect = statusCode !== DisconnectReason.loggedOut;
         
-        if (errorMessage.includes('QR refs attempts ended') || statusCode === 408) {
-          console.warn('Detected QR failure or timeout. Stopping reconnection and clearing stale session.');
+        // If it's a 408 timeout or QR failure, we don't want to loop.
+        // We also want to clear the session so the user starts fresh.
+        if (errorMessage.includes('QR refs attempts ended') || statusCode === 408 || errorMessage.includes('Timed out')) {
+          console.warn(`[WA] Disconnect detected: ${errorMessage} (Status: ${statusCode}). Stopping loop.`);
           shouldReconnect = false;
-          this.socket = null; // Clean socket reference
-          // Optionally clear session on timeout to ensure next attempt is fresh
+          
+          if (this.socket) {
+            try {
+              this.socket.ev.removeAllListeners('connection.update');
+              this.socket.ev.removeAllListeners('creds.update');
+              this.socket.end(undefined);
+            } catch (e) {}
+            this.socket = null;
+          }
+
           const sessionDir = path.join(process.cwd(), 'sessions/wa-session');
           if (fs.existsSync(sessionDir)) {
-            // We only remove if it's a persistent timeout
-            fs.removeSync(sessionDir);
+            try {
+              fs.removeSync(sessionDir);
+              console.log('[WA] Stale session cleared.');
+            } catch (e) {
+              console.error('[WA] Failed to clear session dir:', e);
+            }
           }
         }
 
@@ -88,11 +102,26 @@ export class WhatsAppService {
   }
 
   async getPairingCode(phoneNumber: string) {
-    if (!this.socket) await this.init();
+    // If socket exists but is not connected, it might be in a legacy state. 
+    // If it's a 408 error previously, this.socket would be null.
+    // However, let's be extra safe:
+    if (this.socket && this.status !== 'connected') {
+      try {
+        this.socket.end(undefined);
+      } catch (e) {}
+      this.socket = null;
+    }
+
+    if (!this.socket) {
+      await this.init();
+    }
     
     if (this.status === 'connected') {
-      throw new Error('Already connected');
+      throw new Error('WhatsApp sudah terhubung.');
     }
+
+    // Wait a bit for the socket to actually be ready for commands
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Ensure phone number starts with country code, no +
     const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');

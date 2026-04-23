@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Input, Badge, Button } from '../components/UI';
-import { ShieldCheck, MessageSquare, Send, AlertTriangle, Zap, Activity, Clock, Crown, Cpu, ShieldAlert, CheckCircle, Terminal, HardDrive, Phone, Calendar, X, Globe } from 'lucide-react';
+import { ShieldCheck, MessageSquare, Send, AlertTriangle, Zap, Activity, Clock, Crown, Cpu, ShieldAlert, CheckCircle, Terminal, HardDrive, Phone, Calendar, X, Globe, Wifi, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { storage } from '../utils/helpers';
@@ -16,6 +16,23 @@ export const BadakWAPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [lastSessionData, setLastSessionData] = useState<{ nomor: string, total: string, time: string, date: string, region: string } | null>(null);
+  
+  // WhatsApp Status
+  const [waStatus, setWaStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await fetch('/api/wa/status');
+        const data = await res.json();
+        setWaStatus(data.status);
+      } catch (err) {}
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const isPremium = user?.premiumType !== null || user?.role === 'admin';
   
@@ -135,11 +152,43 @@ export const BadakWAPage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-20">
-      <div className="space-y-1">
-        <h2 className="text-3xl font-bold flex items-center gap-3">
-          <ShieldCheck className="w-8 h-8 text-brand-purple" /> Badak WA v2.0
-        </h2>
-        <p className="text-slate-400">Tools spam WhatsApp paling stabil dengan Proxy V2L.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-black italic uppercase tracking-tighter flex items-center gap-3">
+            <ShieldCheck className="w-8 h-8 text-brand-purple" /> Badak WA <span className="text-brand-purple">v2.0</span>
+          </h2>
+          <p className="text-slate-400 text-sm font-medium italic">Tools spam WhatsApp paling stabil dengan Proxy V2L.</p>
+        </div>
+        
+        <div className="flex items-center gap-3 bg-white/5 p-2 pr-4 rounded-2xl border border-white/5">
+           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+             waStatus === 'connected' ? 'bg-emerald-500/20 text-emerald-500' : 
+             waStatus === 'connecting' ? 'bg-amber-500/20 text-amber-500' : 
+             'bg-red-500/20 text-red-500'
+           }`}>
+             {waStatus === 'connected' ? <Wifi className="w-5 h-5" /> : 
+              waStatus === 'connecting' ? <Activity className="w-5 h-5 animate-pulse" /> : 
+              <WifiOff className="w-5 h-5" />}
+           </div>
+           <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 leading-none">Connection</p>
+              <div className="flex items-center gap-2">
+                 <span className={`text-sm font-black italic uppercase tracking-tighter ${
+                   waStatus === 'connected' ? 'text-emerald-400' : 
+                   waStatus === 'connecting' ? 'text-amber-400' : 
+                   'text-red-400'
+                 }`}>
+                   {waStatus === 'connected' ? 'CONNECTED' : waStatus === 'connecting' ? 'CONNECTING...' : 'DISCONNECTED'}
+                 </span>
+                 {waStatus === 'connected' && (
+                   <div className="flex gap-0.5">
+                      <div className="w-1 h-3 bg-emerald-500 animate-[bounce_0.6s_ease-in-out_infinite]" />
+                      <div className="w-1 h-2 bg-emerald-500 animate-[bounce_0.8s_ease-in-out_infinite]" />
+                   </div>
+                 )}
+              </div>
+           </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

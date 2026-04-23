@@ -19,7 +19,8 @@ import {
   PlusSquare,
   Layout as LayoutIcon,
   Zap,
-  Info
+  Info,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
@@ -30,6 +31,15 @@ interface Song {
   artist: string;
   url: string;
   cover: string;
+}
+
+interface SpotifyTrack {
+  item: {
+    name: string;
+    artists: { name: string }[];
+    album: { images: { url: string }[] };
+  };
+  is_playing: boolean;
 }
 
 const PLAYLIST: Song[] = [
@@ -68,7 +78,73 @@ export const SettingsPage: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [platform, setPlatform] = useState<'android' | 'ios' | 'desktop'>('android');
 
+  // Spotify States
+  const [spotifyUser, setSpotifyUser] = useState<any>(null);
+  const [spotifyTrack, setSpotifyTrack] = useState<SpotifyTrack | null>(null);
+  const [isSpotifyMode, setIsSpotifyMode] = useState(false);
+
   const currentSong = PLAYLIST[currentSongIndex];
+
+  // Spotify Logic
+  const fetchSpotifyData = async () => {
+    try {
+      const userRes = await fetch('/api/spotify/me');
+      if (userRes.ok) {
+        setSpotifyUser(await userRes.json());
+        fetchCurrentTrack();
+      }
+    } catch (err) {}
+  };
+
+  const fetchCurrentTrack = async () => {
+    try {
+      const trackRes = await fetch('/api/spotify/current-track');
+      if (trackRes.ok) {
+        const data = await trackRes.json();
+        setSpotifyTrack(data.playing ? data : null);
+      }
+    } catch (err) {}
+  };
+
+  const handleSpotifyConnect = async () => {
+    try {
+      const res = await fetch('/api/spotify/auth-url');
+      const { url } = await res.json();
+      const popup = window.open(url, 'spotify_auth', 'width=600,height=700');
+      if (!popup) toast.error('Popup terblokir! Silakan izinkan popup.');
+    } catch (err) {
+      toast.error('Gagal menghubungkan Spotify.');
+    }
+  };
+
+  const spotifyControl = async (action: 'play' | 'pause' | 'next' | 'prev') => {
+    try {
+      await fetch(`/api/spotify/controls/${action}`, { method: 'POST' });
+      // Polling delay
+      setTimeout(fetchCurrentTrack, 500);
+    } catch (err) {}
+  };
+
+  useEffect(() => {
+    fetchSpotifyData();
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SPOTIFY_AUTH_SUCCESS') {
+        toast.success('Spotify berhasil terhubung!');
+        fetchSpotifyData();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
+    const interval = setInterval(() => {
+      if (spotifyUser) fetchCurrentTrack();
+    }, 5000);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      clearInterval(interval);
+    };
+  }, [spotifyUser]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -266,92 +342,216 @@ export const SettingsPage: React.FC = () => {
 
         {/* Music Player Area */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="p-0 overflow-hidden border-brand-purple/20 bg-brand-purple/5 shadow-2xl relative">
-            <div className="relative aspect-square">
-              <img src={currentSong.cover} alt="Cover" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-brand-black via-transparent to-transparent"></div>
-              
-              <div className="absolute bottom-6 left-6 right-6">
-                 <motion.p 
-                  key={currentSong.id}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  className="text-2xl font-black italic tracking-tighter uppercase truncate"
-                 >
-                   {currentSong.title}
-                 </motion.p>
-                 <p className="text-sm text-brand-purple font-bold tracking-widest uppercase">{currentSong.artist}</p>
-              </div>
+          <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10 mb-2">
+             <button 
+              onClick={() => setIsSpotifyMode(false)}
+              className={`flex-1 py-3 rounded-xl text-xs font-black italic uppercase tracking-widest transition-all ${!isSpotifyMode ? 'bg-brand-purple text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+             >
+               LOCAL
+             </button>
+             <button 
+              onClick={() => {
+                if (!spotifyUser) handleSpotifyConnect();
+                setIsSpotifyMode(true);
+              }}
+              className={`flex-1 py-3 rounded-xl text-xs font-black italic uppercase tracking-widest transition-all ${isSpotifyMode ? 'bg-[#1DB954] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+             >
+               SPOTIFY
+             </button>
+          </div>
 
-              {isPlaying && (
-                <div className="absolute top-4 right-4 animate-spin-slow">
-                   <Disc className="w-10 h-10 text-brand-purple" />
-                </div>
-              )}
-            </div>
-
-            <div className="p-8 space-y-6">
-              <audio ref={audioRef} src={currentSong.url} onTimeUpdate={handleTimeUpdate} onEnded={skipForward} />
-              <input type="range" min="0" max="100" value={progress} readOnly className="w-full h-1 bg-white/10 rounded-lg appearance-none pointer-events-none accent-brand-purple" />
-
-              <div className="flex items-center justify-between">
-                 <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }} onClick={skipBack} className="text-slate-400 hover:text-white transition-colors">
-                    <SkipBack className="w-7 h-7 fill-current" />
-                 </motion.button>
-                 
-                 <motion.button 
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={togglePlay}
-                  className="w-20 h-20 bg-brand-purple rounded-full flex items-center justify-center text-white shadow-xl shadow-brand-purple/40"
-                 >
-                   {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current translate-x-1" />}
-                 </motion.button>
-
-                 <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }} onClick={skipForward} className="text-slate-400 hover:text-white transition-colors">
-                    <SkipForward className="w-7 h-7 fill-current" />
-                 </motion.button>
-              </div>
-
-              <div className="flex items-center gap-4 pt-4 border-t border-white/5">
-                 <Volume2 className="w-4 h-4 text-slate-500" />
-                 <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} className="flex-1 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer accent-brand-purple" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 border-white/5 bg-white/[0.02] space-y-4">
-             <div className="flex items-center gap-2 mb-2">
-                <ListMusic className="w-4 h-4 text-brand-purple" />
-                <h4 className="text-[10px] font-black italic tracking-[0.2em] uppercase text-slate-500">PLAYLIST KYZZYY</h4>
-             </div>
-             
-             <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-none">
-                {PLAYLIST.map((song, idx) => (
-                  <motion.button 
-                    key={song.id}
-                    whileHover={{ x: 5, backgroundColor: "rgba(255,255,255,0.05)" }}
-                    onClick={() => { setCurrentSongIndex(idx); setIsPlaying(false); setTimeout(() => togglePlay(), 100); }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${idx === currentSongIndex ? 'bg-brand-purple/10 ring-1 ring-brand-purple/20' : 'text-slate-500'}`}
-                  >
-                    <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/10">
-                       <img src={song.cover} alt="" className="w-full h-full object-cover" />
+          <AnimatePresence mode="wait">
+            {!isSpotifyMode ? (
+              <motion.div
+                key="local"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <Card className="p-0 overflow-hidden border-brand-purple/20 bg-brand-purple/5 shadow-2xl relative">
+                  <div className="relative aspect-square">
+                    <img src={currentSong.cover} alt="Cover" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-brand-black via-transparent to-transparent"></div>
+                    
+                    <div className="absolute bottom-6 left-6 right-6">
+                       <motion.p 
+                        key={currentSong.id}
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        className="text-2xl font-black italic tracking-tighter uppercase truncate"
+                       >
+                         {currentSong.title}
+                       </motion.p>
+                       <p className="text-sm text-brand-purple font-bold tracking-widest uppercase">{currentSong.artist}</p>
                     </div>
-                    <div className="flex-1 text-left">
-                       <p className={`text-sm font-bold truncate ${idx === currentSongIndex ? 'text-brand-purple' : 'text-slate-200'}`}>{song.title}</p>
-                       <p className="text-[9px] uppercase font-black text-slate-600">{song.artist}</p>
-                    </div>
-                    {idx === currentSongIndex && isPlaying && (
-                       <div className="flex items-end gap-0.5 h-3">
-                          <motion.div animate={{ height: [4, 12, 4] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-brand-purple rounded-full" />
-                          <motion.div animate={{ height: [12, 4, 12] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1 bg-brand-purple rounded-full" />
-                          <motion.div animate={{ height: [6, 10, 6] }} transition={{ repeat: Infinity, duration: 0.4 }} className="w-1 bg-brand-purple rounded-full" />
-                       </div>
+
+                    {isPlaying && (
+                      <div className="absolute top-4 right-4 animate-spin-slow">
+                         <Disc className="w-10 h-10 text-brand-purple" />
+                      </div>
                     )}
-                  </motion.button>
-                ))}
-             </div>
-          </Card>
+                  </div>
+
+                  <div className="p-8 space-y-6">
+                    <audio ref={audioRef} src={currentSong.url} onTimeUpdate={handleTimeUpdate} onEnded={skipForward} />
+                    <input type="range" min="0" max="100" value={progress} readOnly className="w-full h-1 bg-white/10 rounded-lg appearance-none pointer-events-none accent-brand-purple" />
+
+                    <div className="flex items-center justify-between">
+                       <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }} onClick={skipBack} className="text-slate-400 hover:text-white transition-colors">
+                          <SkipBack className="w-7 h-7 fill-current" />
+                       </motion.button>
+                       
+                       <motion.button 
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={togglePlay}
+                        className="w-20 h-20 bg-brand-purple rounded-full flex items-center justify-center text-white shadow-xl shadow-brand-purple/40"
+                       >
+                         {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current translate-x-1" />}
+                       </motion.button>
+
+                       <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }} onClick={skipForward} className="text-slate-400 hover:text-white transition-colors">
+                          <SkipForward className="w-7 h-7 fill-current" />
+                       </motion.button>
+                    </div>
+
+                    <div className="flex items-center gap-4 pt-4 border-t border-white/5">
+                       <Volume2 className="w-4 h-4 text-slate-500" />
+                       <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} className="flex-1 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer accent-brand-purple" />
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-6 border-white/5 bg-white/[0.02] space-y-4">
+                   <div className="flex items-center gap-2 mb-2">
+                      <ListMusic className="w-4 h-4 text-brand-purple" />
+                      <h4 className="text-[10px] font-black italic tracking-[0.2em] uppercase text-slate-500">PLAYLIST KYZZYY</h4>
+                   </div>
+                   
+                   <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-none">
+                      {PLAYLIST.map((song, idx) => (
+                        <motion.button 
+                          key={song.id}
+                          whileHover={{ x: 5, backgroundColor: "rgba(255,255,255,0.05)" }}
+                          onClick={() => { setCurrentSongIndex(idx); setIsPlaying(false); setTimeout(() => togglePlay(), 100); }}
+                          className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${idx === currentSongIndex ? 'bg-brand-purple/10 ring-1 ring-brand-purple/20' : 'text-slate-500'}`}
+                        >
+                          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/10">
+                             <img src={song.cover} alt="" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex-1 text-left">
+                             <p className={`text-sm font-bold truncate ${idx === currentSongIndex ? 'text-brand-purple' : 'text-slate-200'}`}>{song.title}</p>
+                             <p className="text-[9px] uppercase font-black text-slate-600">{song.artist}</p>
+                          </div>
+                          {idx === currentSongIndex && isPlaying && (
+                             <div className="flex items-end gap-0.5 h-3">
+                                <motion.div animate={{ height: [4, 12, 4] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-brand-purple rounded-full" />
+                                <motion.div animate={{ height: [12, 4, 12] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1 bg-brand-purple rounded-full" />
+                                <motion.div animate={{ height: [6, 10, 6] }} transition={{ repeat: Infinity, duration: 0.4 }} className="w-1 bg-brand-purple rounded-full" />
+                             </div>
+                          )}
+                        </motion.button>
+                      ))}
+                   </div>
+                </Card>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="spotify"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-6"
+              >
+                {!spotifyUser ? (
+                  <Card className="p-8 border-[#1DB954]/20 bg-[#1DB954]/5 space-y-6 text-center">
+                     <div className="w-20 h-20 bg-[#1DB954] rounded-full mx-auto flex items-center justify-center text-white shadow-[0_10px_30px_rgba(29,185,84,0.4)]">
+                        <Music className="w-10 h-10" />
+                     </div>
+                     <div className="space-y-2">
+                        <h3 className="text-xl font-black italic uppercase">Connect Spotify</h3>
+                        <p className="text-xs text-slate-400">Hubungkan akun Anda untuk mengelola playlist & melihat lagu yang sedang diputar.</p>
+                     </div>
+                     <Button 
+                      onClick={handleSpotifyConnect}
+                      className="w-full h-14 bg-[#1DB954] hover:bg-[#1ed760] text-white font-black italic tracking-widest rounded-2xl gap-3"
+                     >
+                        HUBUNGKAN SEKARANG <ExternalLink className="w-4 h-4" />
+                     </Button>
+                  </Card>
+                ) : (
+                  <div className="space-y-6">
+                    <Card className="p-0 overflow-hidden border-[#1DB954]/20 bg-[#1DB954]/5 shadow-2xl relative min-h-[400px] flex flex-col">
+                      {spotifyTrack ? (
+                        <>
+                          <div className="relative aspect-square">
+                            <img src={spotifyTrack.item.album.images[0].url} alt="Cover" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-brand-black via-transparent to-transparent"></div>
+                            
+                            <div className="absolute bottom-6 left-6 right-6">
+                               <p className="text-2xl font-black italic tracking-tighter uppercase truncate">{spotifyTrack.item.name}</p>
+                               <p className="text-sm text-[#1DB954] font-bold tracking-widest uppercase">{spotifyTrack.item.artists.map(a => a.name).join(', ')}</p>
+                            </div>
+
+                            {spotifyTrack.is_playing && (
+                              <div className="absolute top-4 right-4 ">
+                                 <motion.div 
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                                 >
+                                    <Disc className="w-10 h-10 text-[#1DB954]" />
+                                 </motion.div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-4 text-center">
+                           <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center text-slate-600">
+                              <Music className="w-10 h-10" />
+                           </div>
+                           <div>
+                              <p className="text-slate-400 font-bold uppercase tracking-widest">Tidak ada musik</p>
+                              <p className="text-xs text-slate-600">Putar lagu di aplikasi Spotify Anda.</p>
+                           </div>
+                        </div>
+                      )}
+
+                      <div className="p-8 space-y-6 bg-brand-black/40 backdrop-blur-xl">
+                        <div className="flex items-center justify-between">
+                           <motion.button whileTap={{ scale: 0.8 }} onClick={() => spotifyControl('prev')} className="text-slate-400 hover:text-white transition-colors">
+                              <SkipBack className="w-7 h-7 fill-current" />
+                           </motion.button>
+                           
+                           <motion.button 
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => spotifyControl(spotifyTrack?.is_playing ? 'pause' : 'play')}
+                            className="w-16 h-16 bg-[#1DB954] rounded-full flex items-center justify-center text-white shadow-xl shadow-[#1DB954]/40"
+                           >
+                             {spotifyTrack?.is_playing ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current translate-x-0.5" />}
+                           </motion.button>
+
+                           <motion.button whileTap={{ scale: 0.8 }} onClick={() => spotifyControl('next')} className="text-slate-400 hover:text-white transition-colors">
+                              <SkipForward className="w-7 h-7 fill-current" />
+                           </motion.button>
+                        </div>
+                      </div>
+                    </Card>
+
+                    <Card className="p-4 border-white/5 bg-white/[0.02] flex items-center gap-4">
+                       <img src={spotifyUser.images?.[0]?.url} className="w-10 h-10 rounded-full border border-[#1DB954]/40" alt="" />
+                       <div>
+                          <p className="text-xs font-black italic uppercase text-[#1DB954]">TERHUBUNG SEBAGAI</p>
+                          <p className="text-sm font-bold text-slate-200">{spotifyUser.display_name}</p>
+                       </div>
+                       <Button variant="outline" className="ml-auto h-8 px-3 rounded-lg text-[10px] border-white/5 hover:bg-white/5 text-slate-500">LOGOUT</Button>
+                    </Card>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

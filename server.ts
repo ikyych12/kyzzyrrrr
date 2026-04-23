@@ -10,6 +10,9 @@ import { waService } from "./whatsapp.js";
 
 dotenv.config();
 
+// Spotify State
+let spotifyTokens: { access_token: string, refresh_token: string, expires_at: number } | null = null;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -201,6 +204,179 @@ async function startServer() {
   }
 
   app.use(express.json());
+
+  // Spotify API Routes
+  app.get('/api/spotify/auth-url', (req, res) => {
+    const clientId = process.env.SPOTIFY_CLIENT_ID;
+    if (!clientId) return res.status(500).json({ error: 'SPOTIFY_CLIENT_ID not configured' });
+
+    const host = req.get('host');
+    const protocol = host?.includes('localhost') ? 'http' : 'https';
+    const redirectUri = `${protocol}://${host}/api/spotify/callback`;
+
+    const scopes = [
+      'user-read-currently-playing',
+      'user-read-playback-state',
+      'user-modify-playback-state',
+      'playlist-read-private',
+      'playlist-modify-public'
+    ].join(' ');
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      response_type: 'code',
+      redirect_uri: redirectUri,
+      scope: scopes,
+      show_dialog: 'true'
+    });
+
+    res.json({ url: `https://accounts.spotify.com/authorize?${params.toString()}` });
+  });
+
+  app.get(['/api/spotify/callback', '/api/spotify/callback/'], async (req, res) => {
+    const { code } = req.query;
+    if (!code) return res.status(400).send('No code provided');
+
+    const clientId = process.env.SPOTIFY_CLIENT_ID;
+    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    const host = req.get('host');
+    const protocol = host?.includes('localhost') ? 'http' : 'https';
+    const redirectUri = `${protocol}://${host}/api/spotify/callback`;
+
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    try {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code as string,
+          redirect_uri: redirectUri
+        })
+      });
+
+      const data = await response.json();
+      if (data.error) throw new Error(data.error_description || data.error);
+
+      spotifyTokens = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: Date.now() + data.expires_in * 1000
+      };
+
+      res.send(`
+        <html>
+          <body style="background: #0a0a0a; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh;">
+            <script>
+              window.opener.postMessage({ type: 'SPOTIFY_AUTH_SUCCESS' }, '*');
+              window.close();
+            </script>
+            <div style="text-align: center;">
+              <h2>✅ Spotify Connected!</h2>
+              <p>This window will close automatically.</p>
+            </div>
+          </body>
+        </html>
+      `);
+    } catch (err: any) {
+      console.error('Spotify Auth Error:', err);
+      res.status(500).send(`Auth Error: ${err.message}`);
+    }
+  });
+
+  const getSpotifyAccessToken = async () => {
+    if (!spotifyTokens) return null;
+    if (Date.now() < spotifyTokens.expires_at - 60000) return spotifyTokens.access_token;
+
+    // Refresh token
+    const clientId = process.env.SPOTIFY_CLIENT_ID;
+    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    try {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: spotifyTokens.refresh_token
+        })
+      });
+
+      const data = await response.json();
+      spotifyTokens = {
+        ...spotifyTokens,
+        access_token: data.access_token,
+        expires_at: Date.now() + data.expires_in * 1000
+      };
+      return data.access_token;
+    } catch (err) {
+      console.error('Spotify Refresh Error:', err);
+      return null;
+    }
+  };
+
+  app.get('/api/spotify/me', async (req, res) => {
+    const token = await getSpotifyAccessToken();
+    if (!token) return res.status(401).json({ error: 'Not connected' });
+
+    try {
+      const response = await fetch('https://api.spotify.com/v1/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch Spotify profile' });
+    }
+  });
+
+  app.get('/api/spotify/current-track', async (req, res) => {
+    const token = await getSpotifyAccessToken();
+    if (!token) return res.status(401).json({ error: 'Not connected' });
+
+    try {
+      const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.status === 204) return res.json({ playing: false });
+      const data = await response.json();
+      res.json({ playing: true, ...data });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch current track' });
+    }
+  });
+
+  app.post('/api/spotify/controls/:action', async (req, res) => {
+    const { action } = req.params;
+    const token = await getSpotifyAccessToken();
+    if (!token) return res.status(401).json({ error: 'Not connected' });
+
+    let endpoint = '';
+    let method = 'PUT';
+
+    if (action === 'play') endpoint = 'https://api.spotify.com/v1/me/player/play';
+    else if (action === 'pause') endpoint = 'https://api.spotify.com/v1/me/player/pause';
+    else if (action === 'next') { endpoint = 'https://api.spotify.com/v1/me/player/next'; method = 'POST'; }
+    else if (action === 'prev') { endpoint = 'https://api.spotify.com/v1/me/player/previous'; method = 'POST'; }
+
+    try {
+      await fetch(endpoint, {
+        method,
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to control playback' });
+    }
+  });
 
   // API Route: Get Client Information
   app.get("/api/client-info", (req, res) => {
