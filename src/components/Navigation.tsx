@@ -45,8 +45,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { name: 'Tips Blast', path: '/tips', icon: Lightbulb },
     { name: 'Unband & Tutor Limit', path: '/unband', icon: Ban },
     { name: 'Rekomendasi Blast', path: '/recommendations', icon: ThumbsUp },
-    { name: 'Install App', path: '/install', icon: Download },
-    { name: 'Settings', path: '/settings', icon: SettingsIcon },
+    { name: 'Settings & Musik', path: '/settings', icon: SettingsIcon },
   ];
 
   if (user?.role === 'admin') {

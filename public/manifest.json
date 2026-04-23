@@ -2,8 +2,10 @@
   "name": "Kyzzyy Store Panel",
   "short_name": "Kyzzyy",
   "description": "Premium Store & Admin Panel by Kyzzyy",
-  "start_url": "/",
+  "start_url": "/home",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0a0a0a",
   "theme_color": "#a855f7",
   "icons": [
