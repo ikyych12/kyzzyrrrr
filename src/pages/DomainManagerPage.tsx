@@ -9,6 +9,9 @@ export const DomainManagerPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<any>(null);
 
+  const expectedIPs = ['216.239.32.21', '216.239.34.21', '216.239.36.21', '216.239.38.21'];
+  const sharedUrl = 'ais-pre-id2qrlzvoxuletz6m3zvjz-54398651811.asia-southeast1.run.app';
+
   const checkDNS = async () => {
     if (!domain) {
       toast.error('Masukkan nama domain');
@@ -44,7 +47,7 @@ export const DomainManagerPage: React.FC = () => {
           Domain <span className="text-white/20">Mana</span>ger
         </h1>
         <p className="text-slate-400 text-sm max-w-2xl font-medium leading-relaxed">
-          Hubungkan domain kustom Anda ke panel Kyzzyy. Kami merekomendasikan penggunaan <span className="text-brand-purple font-bold">Cloudflare</span> untuk kemudahan setup dan keamanan ekstra.
+          Gunakan informasi di bawah ini untuk menghubungkan <span className="text-white font-bold">kyzzy.my.id</span> ke hosting Kyzzyy Store.
         </p>
       </div>
 
@@ -57,8 +60,8 @@ export const DomainManagerPage: React.FC = () => {
                 <Globe className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-xl font-black italic tracking-tight uppercase">Configuration</h3>
-                <p className="text-xs text-slate-500 font-medium font-mono uppercase">Point your domain to Kyzzyy</p>
+                <h3 className="text-xl font-black italic tracking-tight uppercase">Status Koneksi</h3>
+                <p className="text-xs text-slate-500 font-medium font-mono uppercase">DNS Verification Tool</p>
               </div>
             </div>
 
@@ -74,7 +77,7 @@ export const DomainManagerPage: React.FC = () => {
               </div>
               <Button onClick={checkDNS} disabled={loading} className="h-14 rounded-2xl gap-2 font-black italic tracking-widest">
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
-                CEK STATUS
+                CEK PROPAGASI
               </Button>
             </div>
 
@@ -86,12 +89,12 @@ export const DomainManagerPage: React.FC = () => {
               >
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Current Resolution</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Hasil Resolusi DNS</p>
                     <p className={`text-xl font-black italic ${status.connected ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {status.connected ? 'DOMAIN CONNECTED' : 'NOT CONNECTED'}
+                      {status.connected ? 'DOMAIN AKTIF' : 'BELUM TERHUBUNG'}
                     </p>
                     <p className="text-xs font-mono text-slate-400 uppercase mt-1">
-                      Resolves to: <span className="text-white font-bold">{status.ip || 'Unknown'}</span>
+                      IP Terdeteksi: <span className="text-white font-bold">{status.ip || 'Tidak ada'}</span>
                     </p>
                   </div>
                   {status.connected ? <CheckCircle2 className="w-12 h-12 text-emerald-500" /> : <AlertTriangle className="w-12 h-12 text-red-500" />}
@@ -103,14 +106,15 @@ export const DomainManagerPage: React.FC = () => {
           <div className="space-y-6 pt-6 border-t border-white/5">
              <div className="flex items-center gap-2">
                <Server className="w-5 h-5 text-brand-purple" />
-               <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">DNS Records Required</h4>
+               <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Detail DNS Records (Input ke Cloudflare/Panel Domain)</h4>
              </div>
              
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {[
-                 { type: 'A', name: '@', value: '216.239.32.21', desc: 'Main IP 1' },
-                 { type: 'A', name: '@', value: '216.239.34.21', desc: 'Main IP 2' },
-                 { type: 'CNAME', name: 'www', value: 'ghs.googlehosted.com', desc: 'WWW Redirect' }
+                 { type: 'A', name: '@', value: '216.239.32.21', desc: 'Google Server IP 1' },
+                 { type: 'A', name: '@', value: '216.239.34.21', desc: 'Google Server IP 2' },
+                 { type: 'CNAME', name: 'www', value: 'ghs.googlehosted.com', desc: 'Default Redirect' },
+                 { type: 'CNAME', name: 'panel', value: sharedUrl, desc: 'Optional: Subdomain Direct' }
                ].map((record, i) => (
                  <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3 group hover:border-brand-purple/30 transition-all">
                     <div className="flex items-center justify-between">
@@ -118,7 +122,7 @@ export const DomainManagerPage: React.FC = () => {
                       <span className="text-[10px] font-bold text-slate-500 uppercase">{record.desc}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2 p-3 bg-brand-black/40 rounded-xl border border-white/5">
-                      <code className="text-xs font-mono text-brand-purple truncate">{record.value}</code>
+                      <code className="text-[10px] font-mono text-brand-purple truncate">{record.value}</code>
                       <button onClick={() => copyToClipboard(record.value)} className="text-slate-500 hover:text-white transition-colors">
                         <Copy className="w-4 h-4" />
                       </button>
@@ -134,42 +138,43 @@ export const DomainManagerPage: React.FC = () => {
           <Card className="p-8 border-brand-purple/20 bg-brand-purple/5 space-y-6">
             <div className="flex items-center gap-3">
               <Zap className="w-6 h-6 text-brand-purple" />
-              <h3 className="text-xl font-black italic tracking-tight uppercase">Quick Guide</h3>
+              <h3 className="text-xl font-black italic tracking-tight uppercase">Tutorial Lengkap</h3>
             </div>
             
             <div className="space-y-6">
               {[
-                { step: 1, text: 'Gunakan Cloudflare untuk manajemen DNS yang stabil.' },
-                { step: 2, text: 'Masukkan A Record di atas ke panel DNS domain Anda.' },
-                { step: 3, text: 'Klik tombol "Cek Status" untuk verifikasi koneksi.' },
-                { step: 4, text: 'Tunggu proses propagasi (10-60 menit).' }
+                { step: 1, title: 'Buka DNS Management', text: 'Masuk ke provider domain Anda (Niagahoster/Rumahweb/Cloudflare).' },
+                { step: 2, title: 'Hapus Record Lama', text: 'Hapus semua record A atau CNAME lama yang ada di domain tersebut.' },
+                { step: 3, title: 'Tambah Record Baru', text: 'Tambahkan Record A dengan Name "@" dan Value "216.239.32.21". Ulangi untuk IP kedua.' },
+                { step: 4, title: 'Sabar & Tunggu', text: 'Propagasi DNS butuh waktu 15 - 60 menit. Cek secara berkala di dashboard ini.' }
               ].map((item) => (
                 <div key={item.step} className="flex gap-4">
                   <span className="w-6 h-6 rounded-lg bg-brand-purple/20 border border-brand-purple/30 flex items-center justify-center text-[10px] font-black text-brand-purple shrink-0">
                     {item.step}
                   </span>
-                  <p className="text-xs text-slate-300 font-medium leading-relaxed">{item.text}</p>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-white tracking-widest leading-none">{item.title}</p>
+                    <p className="text-[11px] text-slate-400 font-medium leading-relaxed">{item.text}</p>
+                  </div>
                 </div>
               ))}
             </div>
 
-            <a 
-              href="https://dash.cloudflare.com/" 
-              target="_blank" 
-              rel="noreferrer"
-              className="w-full h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest transition-all"
+            <Button 
+              className="w-full h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl gap-2 text-xs font-black uppercase tracking-widest transition-all"
+              onClick={() => window.open('https://dash.cloudflare.com/', '_blank')}
             >
-              Open Cloudflare <ExternalLink className="w-4 h-4" />
-            </a>
+              Buka Cloudflare <ExternalLink className="w-4 h-4" />
+            </Button>
           </Card>
 
           <Card className="p-6 border-orange-500/20 bg-orange-500/5 space-y-3">
             <div className="flex items-center gap-2 text-orange-500">
               <Shield className="w-5 h-5" />
-              <p className="text-[10px] font-black uppercase tracking-widest">SSL Security</p>
+              <p className="text-[10px] font-black uppercase tracking-widest">Catatan Penting</p>
             </div>
-            <p className="text-[10px] text-orange-200/60 font-medium leading-relaxed">
-              Setelah domain terhubung, Google Cloud akan mengotomatisasi penerbitan sertifikat SSL (HTTPS). Proses ini bisa memakan waktu hingga 24 jam setelah propagasi DNS selesai.
+            <p className="text-[11px] text-orange-200/60 font-medium leading-relaxed">
+              Setelah DNS terhubung (HIJAU), HTTPS mungkin butuh waktu beberapa jam untuk aktif. Jangan khawatir jika muncul "Your connection is not private" di awal, Google sedang memproses SSL gratis Anda.
             </p>
           </Card>
         </div>

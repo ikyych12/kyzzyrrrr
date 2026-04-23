@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, Home, User as UserIcon, BookOpen, Lightbulb, Ban, ShieldCheck, ChevronRight, LogOut, Code, Smartphone, Play, History, ThumbsUp, Globe } from 'lucide-react';
+import { Menu, X, Home, User as UserIcon, BookOpen, Lightbulb, Ban, ShieldCheck, ChevronRight, LogOut, Code, Smartphone, Play, History, ThumbsUp, Globe, Settings as SettingsIcon, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -45,6 +45,8 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { name: 'Tips Blast', path: '/tips', icon: Lightbulb },
     { name: 'Unband & Tutor Limit', path: '/unband', icon: Ban },
     { name: 'Rekomendasi Blast', path: '/recommendations', icon: ThumbsUp },
+    { name: 'Install App', path: '/install', icon: Download },
+    { name: 'Settings', path: '/settings', icon: SettingsIcon },
   ];
 
   if (user?.role === 'admin') {

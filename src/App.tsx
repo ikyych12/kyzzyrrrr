@@ -19,6 +19,8 @@ import { AnimeDiscoveryPage } from './pages/AnimeDiscoveryPage';
 import { AnimeWatchPage } from './pages/AnimeWatchPage';
 import { NIKCheckerPage } from './pages/NIKCheckerPage';
 import { KyzzyStorePage } from './pages/KyzzyStorePage';
+import { InstallAppPage } from './pages/InstallAppPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { DynamicTitle } from './components/DynamicTitle';
 
 export default function App() {
@@ -46,6 +48,8 @@ export default function App() {
             <Route path="/anime" element={<AnimeDiscoveryPage />} />
             <Route path="/anime/:id" element={<AnimeWatchPage />} />
             <Route path="/nik-checker" element={<NIKCheckerPage />} />
+            <Route path="/install" element={<InstallAppPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/developer" element={<DeveloperPage />} />
             
             {/* Admin Only Routes */}

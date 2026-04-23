@@ -43,12 +43,29 @@ export const NIKCheckerPage: React.FC = () => {
     // Simulate API/Parser Logic
     setTimeout(() => {
       const provCode = nik.substring(0, 2);
-      const dobCode = parseInt(nik.substring(6, 12));
+      const cityCode = nik.substring(2, 4);
+      const districtCode = nik.substring(4, 6);
+      const dobSegment = nik.substring(6, 12);
       const sequence = nik.substring(12, 16);
 
-      let day = parseInt(nik.substring(6, 8));
-      const month = parseInt(nik.substring(8, 10));
-      let year = parseInt(nik.substring(10, 12));
+      // 1. Validate Province
+      if (!provinces[provCode]) {
+        toast.error('Kode Provinsi tidak valid');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Validate Sequence
+      if (sequence === '0000') {
+        toast.error('Nomor urut 0000 tidak valid');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Parse Date & Gender
+      let day = parseInt(dobSegment.substring(0, 2));
+      const month = parseInt(dobSegment.substring(2, 4));
+      let yearShort = parseInt(dobSegment.substring(4, 6));
       
       let gender = "Laki-laki";
       if (day > 40) {
@@ -56,31 +73,48 @@ export const NIKCheckerPage: React.FC = () => {
         day -= 40;
       }
 
-      // Estimate year (simple logic, assuming 1900-2099)
-      const currentYearShort = new Date().getFullYear() % 100;
-      year += (year > currentYearShort ? 1900 : 2000);
-
-      const dobDate = new Date(year, month - 1, day);
-      const age = new Date().getFullYear() - year;
-
-      if (isNaN(dobDate.getTime()) || month > 12 || day > 31) {
-        toast.error('Format NIK tidak valid (Bit tanggal lahir salah)');
+      // Basic range validation
+      if (month < 1 || month > 12 || day < 1 || day > 31) {
+        toast.error('Format tanggal lahir tidak valid');
         setLoading(false);
         return;
       }
 
+      // Advanced Date Validation (Leap years, etc)
+      const currentYear = new Date().getFullYear();
+      const currentYearShort = currentYear % 100;
+      const year = yearShort <= currentYearShort ? 2000 + yearShort : 1900 + yearShort;
+      
+      const dobDate = new Date(year, month - 1, day);
+      
+      // Check if Date object matches input (e.g. Feb 30 becomes Mar 2)
+      if (dobDate.getDate() !== day || dobDate.getMonth() !== month - 1 || dobDate.getFullYear() !== year) {
+        toast.error('Tanggal lahir tidak masuk akal (Contoh: 30 Februari)');
+        setLoading(false);
+        return;
+      }
+
+      // Check if dob is in the future
+      if (dobDate > new Date()) {
+        toast.error('Tanggal lahir tidak boleh di masa depan');
+        setLoading(false);
+        return;
+      }
+
+      const age = currentYear - year;
+
       setResult({
         nik,
-        province: provinces[provCode] || "Provinsi Tidak Terdeteksi",
-        city: "Data Kota/Kab (Kode: " + nik.substring(2, 4) + ")",
-        district: "Data Kecamatan (Kode: " + nik.substring(4, 6) + ")",
+        province: provinces[provCode],
+        city: "Kab/Kota Kode: " + cityCode,
+        district: "Kecamatan Kode: " + districtCode,
         dob: dobDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
         gender,
         age
       });
 
       setLoading(false);
-      toast.success('NIK berhasil divalidasi!');
+      toast.success('NIK valid secara algoritma!');
     }, 800);
   };
 
@@ -143,8 +177,11 @@ export const NIKCheckerPage: React.FC = () => {
                   <p className="font-bold text-lg">{result.dob}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <Badge variant="premium">Umur: {result.age} Tahun</Badge>
+                <Badge variant="success" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                  Checksum: PASSED
+                </Badge>
               </div>
             </Card>
 

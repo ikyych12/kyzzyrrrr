@@ -56,15 +56,22 @@ export class WhatsAppService {
         const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
         const errorMessage = (lastDisconnect?.error as Error)?.message || '';
         
-        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+        let shouldReconnect = statusCode !== DisconnectReason.loggedOut;
         
-        console.log(`WA Connection closed. Status: ${statusCode}, Error: ${errorMessage}, Reconnecting: ${shouldReconnect}`);
-        
-        if (errorMessage.includes('QR refs attempts ended')) {
-          console.warn('Detected QR failure loop, cleaning session...');
-          fs.removeSync(path.join(process.cwd(), 'sessions/wa-session'));
+        if (errorMessage.includes('QR refs attempts ended') || statusCode === 408) {
+          console.warn('Detected QR failure or timeout. Stopping reconnection and clearing stale session.');
+          shouldReconnect = false;
+          this.socket = null; // Clean socket reference
+          // Optionally clear session on timeout to ensure next attempt is fresh
+          const sessionDir = path.join(process.cwd(), 'sessions/wa-session');
+          if (fs.existsSync(sessionDir)) {
+            // We only remove if it's a persistent timeout
+            fs.removeSync(sessionDir);
+          }
         }
 
+        console.log(`WA Connection closed. Status: ${statusCode}, Error: ${errorMessage}, Reconnecting: ${shouldReconnect}`);
+        
         if (shouldReconnect) {
           // Add a small delay to prevent rapid-fire reconnection on persistent errors
           setTimeout(() => {

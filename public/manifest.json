@@ -1,0 +1,21 @@
+{
+  "name": "Kyzzyy Store Panel",
+  "short_name": "Kyzzyy",
+  "description": "Premium Store & Admin Panel by Kyzzyy",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#a855f7",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/5968/5968204.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/5968/5968204.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
