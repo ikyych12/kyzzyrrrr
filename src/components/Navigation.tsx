@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, Home, User as UserIcon, BookOpen, Lightbulb, Ban, ShieldCheck, ChevronRight, LogOut, Code, Smartphone, Play, History, ThumbsUp } from 'lucide-react';
+import { Menu, X, Home, User as UserIcon, BookOpen, Lightbulb, Ban, ShieldCheck, ChevronRight, LogOut, Code, Smartphone, Play, History, ThumbsUp, Globe } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -50,6 +50,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   if (user?.role === 'admin') {
     menuItems.push({ name: 'Admin Panel', path: '/admin', icon: Code });
     menuItems.push({ name: 'WA Gateway', path: '/admin/whatsapp', icon: Smartphone });
+    menuItems.push({ name: 'Hubungkan Domain', path: '/admin/domain', icon: Globe });
   }
 
   return (

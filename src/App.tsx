@@ -6,6 +6,7 @@ import { HomePage } from './pages/HomePage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminPanelPage } from './pages/AdminPanelPage';
 import { WhatsAppSettingsPage } from './pages/WhatsAppSettingsPage';
+import { DomainManagerPage } from './pages/DomainManagerPage';
 import { BadakWAPage } from './pages/BadakWAPage';
 import { WebToAPKPage } from './pages/WebToAPKPage';
 import { TutorialPage } from './pages/TutorialPage';
@@ -51,6 +52,7 @@ export default function App() {
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<AdminPanelPage />} />
               <Route path="/admin/whatsapp" element={<WhatsAppSettingsPage />} />
+              <Route path="/admin/domain" element={<DomainManagerPage />} />
             </Route>
           </Route>
 

@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import fs from "fs-extra";
+import dns from "dns";
 import { Telegraf } from "telegraf";
 import { waService } from "./whatsapp.js";
 
@@ -46,9 +47,9 @@ if (!fs.existsSync(DB_PATH)) {
 }
 
 // Telegram Bot Setup
-const botToken = process.env.TELEGRAM_BOT_TOKEN || "8601224645:AAFjPXrlB8t0oiMvaqPhwKlvzd5aUBP3DLU";
-const ownerId = 6926037855;
-const bot = new Telegraf(botToken);
+const botToken = process.env.TELEGRAM_BOT_TOKEN;
+const ownerId = Number(process.env.TELEGRAM_OWNER_ID) || 6926037855;
+const bot = new Telegraf(botToken || "8601224645:AAFjPXrlB8t0oiMvaqPhwKlvzd5aUBP3DLU");
 
 bot.start((ctx) => {
   if (ctx.from.id !== ownerId) return ctx.reply("❌ Access Denied @kyzzynew only.");
@@ -136,16 +137,44 @@ bot.command("settings", async (ctx) => {
   ctx.reply(`⚙️ *SETTINGS*\n\nVPS Prices:\n${JSON.stringify(db.settings.vpsPrices, null, 2)}\n\nPanel Discount: ${db.settings.panelDiscount}%`, { parse_mode: "Markdown" });
 });
 
-if (botToken && botToken !== "YOUR_BOT_TOKEN") {
+bot.command("domain", async (ctx) => {
+  if (ctx.from.id !== ownerId) return;
+  const domain = ctx.payload.trim() || "kyzzy.my.id";
+  
+  ctx.reply(`🔍 Mengecek DNS untuk: *${domain}*...`, { parse_mode: "Markdown" });
+  
+  dns.resolve4(domain, (err, addresses) => {
+    if (err) {
+      return ctx.reply(`❌ *Gagal:* ${err.message}`, { parse_mode: "Markdown" });
+    }
+    
+    const expectedIPs = ['216.239.32.21', '216.239.34.21', '216.239.36.21', '216.239.38.21'];
+    const connected = addresses.some(addr => expectedIPs.includes(addr));
+    
+    let msg = `🌐 *DOMAIN STATUS: ${domain}*\n\n`;
+    msg += `Status: ${connected ? '✅ TERHUBUNG' : '❌ BELUM TERHUBUNG'}\n`;
+    msg += `IP Terdeteksi: \`${addresses[0]}\`\n\n`;
+    
+    if (!connected) {
+      msg += `💡 *Tips:* Silakan masukkan A Record berikut ke DNS Panel Anda:\n- \`216.239.32.21\`\n- \`216.239.34.21\``;
+    } else {
+      msg += `✨ Domain sudah siap digunakan!`;
+    }
+    
+    ctx.reply(msg, { parse_mode: "Markdown" });
+  });
+});
+
+if (botToken && botToken.includes(":") && !botToken.startsWith("YOUR_BOT")) {
   bot.launch()
     .then(() => console.log("🤖 Telegram Bot Started Successfully"))
     .catch(err => {
-      console.error("❌ Bot launch failed. The token might be invalid or unauthorized.");
-      console.error("Token used:", botToken.substring(0, 5) + "...");
+      console.error("❌ Bot launch failed. The token is likely invalid or expired.");
+      console.error("Error Message:", err.message);
       // Gracefully continue without bot
     });
 } else {
-  console.log("⚠️ No Telegram Bot token provided, skipping bot launch.");
+  console.log("⚠️ Telegram Bot skipped: No valid TELEGRAM_BOT_TOKEN provided in environment variables.");
 }
 
 // Global Blast State
@@ -473,6 +502,27 @@ async function startServer() {
     });
 
     res.json({ status: "started" });
+  });
+
+  // Domain Check Route
+  app.get("/api/domain/check", (req, res) => {
+    const domain = req.query.domain as string;
+    if (!domain) return res.status(400).json({ error: "Domain required" });
+
+    dns.resolve4(domain, (err, addresses) => {
+      if (err) {
+        return res.json({ connected: false, error: err.message });
+      }
+      
+      const expectedIPs = ['216.239.32.21', '216.239.34.21', '216.239.36.21', '216.239.38.21'];
+      const connected = addresses.some(addr => expectedIPs.includes(addr));
+      
+      res.json({ 
+        connected, 
+        ip: addresses[0],
+        allIps: addresses
+      });
+    });
   });
 
   // Serve static files from public directory
