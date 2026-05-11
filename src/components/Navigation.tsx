@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, Home, User as UserIcon, BookOpen, Lightbulb, Ban, ShieldCheck, ChevronRight, LogOut, Code, Smartphone, Play, History, ThumbsUp, Globe, Settings as SettingsIcon, Download } from 'lucide-react';
+import { Menu, X, Home, User as UserIcon, BookOpen, Lightbulb, Ban, ShieldCheck, ChevronRight, LogOut, Code, Smartphone, Play, History, ThumbsUp, Globe, Settings as SettingsIcon, Download, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -7,6 +7,7 @@ import { cn } from '../utils/helpers';
 
 import { BirdEmoji } from './BirdEmoji';
 import { AnimatedLogo3D } from './AnimatedLogo3D';
+import { FeedbackModal } from './FeedbackModal';
 
 export const Navbar: React.FC<{ onOpenSidebar: () => void }> = ({ onOpenSidebar }) => {
   return (
@@ -33,6 +34,7 @@ export const Navbar: React.FC<{ onOpenSidebar: () => void }> = ({ onOpenSidebar 
 export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const menuItems = [
     { name: 'Home', path: '/home', icon: Home },
@@ -40,11 +42,11 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { name: 'Cek Umur WA', path: '/account-age', icon: History },
     { name: 'Profil', path: '/profile', icon: UserIcon },
     { name: 'Badak WA', path: '/badak-wa', icon: ShieldCheck },
-    { name: 'Web To APK', path: '/web-to-apk', icon: Smartphone },
     { name: 'Tutorial Blast', path: '/tutorial', icon: BookOpen },
     { name: 'Tips Blast', path: '/tips', icon: Lightbulb },
     { name: 'Unband & Tutor Limit', path: '/unband', icon: Ban },
     { name: 'Rekomendasi Blast', path: '/recommendations', icon: ThumbsUp },
+    { name: 'Support & Masukan', path: '/support', icon: MessageSquare },
     { name: 'Settings & Musik', path: '/settings', icon: SettingsIcon },
   ];
 
@@ -105,6 +107,14 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
         </div>
 
         <div className="px-5 pt-8 mt-8 border-t border-white/5 space-y-2">
+          <button
+            onClick={() => setShowFeedback(true)}
+            className="w-full flex items-center gap-4 px-5 py-4 rounded-3xl hover:bg-white/[0.03] text-brand-purple group transition-all"
+          >
+            <Lightbulb className="w-5 h-5 text-brand-purple/70 group-hover:text-brand-purple" />
+            <span className="font-semibold tracking-tight">Kirim Feedback</span>
+          </button>
+
           <Link
             to="/developer"
             onClick={onClose}
@@ -123,6 +133,8 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
           </button>
         </div>
       </motion.aside>
+
+      <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
     </>
   );
 };

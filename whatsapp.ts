@@ -58,11 +58,9 @@ export class WhatsAppService {
         
         let shouldReconnect = statusCode !== DisconnectReason.loggedOut;
         
-        // If it's a 408 timeout or QR failure, we don't want to loop.
-        // We also want to clear the session so the user starts fresh.
+        // If it's a 408 timeout or QR failure, clear session and retry after delay
         if (errorMessage.includes('QR refs attempts ended') || statusCode === 408 || errorMessage.includes('Timed out')) {
-          console.warn(`[WA] Disconnect detected: ${errorMessage} (Status: ${statusCode}). Stopping loop.`);
-          shouldReconnect = false;
+          console.warn(`[WA] Disconnect detected: ${errorMessage} (Status: ${statusCode}). Resetting session and retrying...`);
           
           if (this.socket) {
             try {
@@ -78,10 +76,15 @@ export class WhatsAppService {
             try {
               fs.removeSync(sessionDir);
               console.log('[WA] Stale session cleared.');
-            } catch (e) {
-              console.error('[WA] Failed to clear session dir:', e);
-            }
+            } catch (e) {}
           }
+          
+          // Force a retry after a longer delay
+          shouldReconnect = true;
+          setTimeout(() => {
+            this.init();
+          }, 10000);
+          return; // Stop current update handler to let the timeout-based one take over
         }
 
         console.log(`WA Connection closed. Status: ${statusCode}, Error: ${errorMessage}, Reconnecting: ${shouldReconnect}`);

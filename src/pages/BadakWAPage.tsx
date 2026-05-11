@@ -3,7 +3,7 @@ import { Card, Input, Badge, Button } from '../components/UI';
 import { ShieldCheck, MessageSquare, Send, AlertTriangle, Zap, Activity, Clock, Crown, Cpu, ShieldAlert, CheckCircle, Terminal, HardDrive, Phone, Calendar, X, Globe, Wifi, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { storage } from '../utils/helpers';
+import { storage, cn } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
 export const BadakWAPage: React.FC = () => {
@@ -11,7 +11,21 @@ export const BadakWAPage: React.FC = () => {
   const [target, setTarget] = useState('');
   const [amount, setAmount] = useState('50');
   const [isBlasting, setIsBlasting] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [blastData, setBlastData] = useState<{
+    current: number;
+    total: number;
+    successCount: number;
+    failCount: number;
+    lastNumber: string;
+    status: 'idle' | 'running' | 'completed' | 'error';
+  }>({
+    current: 0,
+    total: 0,
+    successCount: 0,
+    failCount: 0,
+    lastNumber: '',
+    status: 'idle'
+  });
   const [logs, setLogs] = useState<string[]>([]);
   const [activeStep, setActiveStep] = useState(0);
   const [showModal, setShowModal] = useState(false);
@@ -29,25 +43,54 @@ export const BadakWAPage: React.FC = () => {
       } catch (err) {}
     };
 
+    const fetchBlastStatus = async () => {
+      try {
+        const res = await fetch('/api/wa/blast-status');
+        const data = await res.json();
+        setBlastData(data);
+        
+        if (data.status === 'running') {
+          setIsBlasting(true);
+          // Calculate active step based on progress percentage
+          const percentage = (data.current / data.total) * 100;
+          const stepIndex = Math.min(Math.floor((percentage / 100) * steps.length), steps.length - 1);
+          setActiveStep(stepIndex);
+          
+          if (data.lastNumber) {
+            setLogs(prev => {
+              const newLog = `[SUCCESS] Sent to ${data.lastNumber} (#${data.current})`;
+              if (prev[0] === newLog) return prev;
+              return [newLog, ...prev.slice(0, 9)];
+            });
+          }
+        } else if (data.status === 'completed' && isBlasting) {
+          setIsBlasting(false);
+          setShowModal(true);
+          toast.success('Blast selesai!');
+        } else if (data.status === 'error' && isBlasting) {
+          setIsBlasting(false);
+          toast.error('Blast berhenti karena kesalahan.');
+        }
+      } catch (err) {}
+    };
+
     checkStatus();
-    const interval = setInterval(checkStatus, 3000);
+    fetchBlastStatus();
+    const interval = setInterval(() => {
+      checkStatus();
+      fetchBlastStatus();
+    }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isBlasting]);
 
   const isPremium = user?.premiumType !== null || user?.role === 'admin';
   
   const getRegion = (num: string) => {
     const clean = num.replace(/\D/g, '');
     if (clean.startsWith('62')) return 'Indonesia 🇮🇩';
-    if (clean.startsWith('58')) return 'Venezuela 🇻🇪';
+    if (clean.startsWith('263')) return 'Zimbabwe 🇿🇼';
     if (clean.startsWith('1')) return 'USA/Canada 🇺🇸🇨🇦';
-    if (clean.startsWith('65')) return 'Singapore 🇸🇬';
-    if (clean.startsWith('60')) return 'Malaysia 🇲🇾';
-    if (clean.startsWith('84')) return 'Vietnam 🇻🇳';
-    if (clean.startsWith('66')) return 'Thailand 🇹🇭';
-    if (clean.startsWith('81')) return 'Japan 🇯🇵';
-    if (clean.startsWith('82')) return 'South Korea 🇰🇷';
-    return 'Unknown Region 🏳️';
+    return 'International 🌍';
   };
   
   const freeOptions = ['10', '25', '50', '100'];
@@ -63,92 +106,60 @@ export const BadakWAPage: React.FC = () => {
     { label: 'Finalizing Task', icon: CheckCircle }
   ];
 
-  const startBlast = () => {
+  const startBlast = async () => {
+    if (waStatus !== 'connected') {
+      toast.error('WhatsApp belum terhubung! Silakan login di WA Gateway.');
+      return;
+    }
+
     if (!target) {
       toast.error('Masukkan nomor target!');
       return;
     }
 
     const cleanNum = target.replace(/\D/g, '');
-    
-    // Validation for Indonesia (62)
-    if (cleanNum.startsWith('62')) {
-      if (cleanNum.length < 10 || cleanNum.length > 15) {
-        toast.error('Nomor Indonesia harus antara 10-15 digit!');
-        return;
-      }
-    } else {
-      // Basic validation for other regions
-      if (cleanNum.length < 7) {
-        toast.error('Nomor tujuan tidak valid (terlalu pendek)!');
-        return;
-      }
+    if (cleanNum.length < 7) {
+      toast.error('Nomor tujuan tidak valid!');
+      return;
     }
 
-    // Record usage
-    const allUsers = storage.getUsers();
-    const userIndex = allUsers.findIndex(u => u.id === user?.id);
-    if (userIndex !== -1 && user) {
-      const currentCount = allUsers[userIndex].badakCount || 0;
-      allUsers[userIndex].badakCount = currentCount + parseInt(amount);
-      storage.setUsers(allUsers);
-    }
+    // Default message that looks like "Badak" spam
+    const message = "🦏 Pesan ini dikirim melalui Badak WA Apocalypse Engine V2.0 🦏\n🛡️ Melindungi privasi Anda dengan V2L Proxy.";
 
-    setIsBlasting(true);
-    setProgress(0);
-    setActiveStep(0);
-    setLogs(['[SYSTEM] Initializing Badak WA Engine...', '[CONFIG] Target set to: ' + target]);
-    toast.success('Mesin Badak WA diaktifkan!');
+    // Generate array of numbers (same number repeated 'amount' times)
+    const count = parseInt(amount);
+    const numbers = Array(count).fill(cleanNum);
 
-    const possibleLogs = [
-      '[AUTH] Session token validated...',
-      '[PROXY] Connecting to V2L Server in SG...',
-      '[GATEWAY] Handshake via Warp 1.1.1.1 successful.',
-      '[CMD] Executing payload injection...',
-      '[X-PACKET] Packet sequence started.',
-      '[FIREWALL] Rules bypassed.',
-      '[LOG] Batch #' + Math.floor(Math.random() * 999) + ' processed.',
-    ];
-
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        const next = Math.min(prev + (Math.random() * 8 + 2), 100);
-        
-        // Update steps based on progress
-        const stepIndex = Math.floor((next / 100) * steps.length);
-        if (stepIndex !== activeStep && stepIndex < steps.length) {
-          setActiveStep(stepIndex);
-        }
-
-        // Add random logs
-        if (Math.random() > 0.7 && next < 100) {
-          setLogs(l => [possibleLogs[Math.floor(Math.random() * possibleLogs.length)], ...l.slice(0, 5)]);
-        }
-
-        if (next >= 100) {
-          clearInterval(interval);
-          setLogs(l => ['[COMPLETE] All ' + amount + ' messages dispatched.', ...l]);
-          
-          const now = new Date();
-          setLastSessionData({
-            nomor: target,
-            total: amount,
-            time: now.toLocaleTimeString('id-ID'),
-            date: now.toLocaleDateString('id-ID'),
-            region: getRegion(target)
-          });
-
-          setTimeout(() => {
-            setIsBlasting(false);
-            setShowModal(true);
-            toast.success('Blast selesai diproses!');
-          }, 1500);
-          return 100;
-        }
-        return next;
+    try {
+      const res = await fetch('/api/wa/start-blast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numbers, message })
       });
-    }, 400);
+      
+      const data = await res.json();
+      if (res.ok) {
+        setIsBlasting(true);
+        setLogs(['[SYSTEM] Memulai mesin penyembur...', '[CONFIG] Target: ' + target, '[CONFIG] Jumlah: ' + amount]);
+        toast.success('Penyemburan dimulai!');
+        
+        const now = new Date();
+        setLastSessionData({
+          nomor: target,
+          total: amount,
+          time: now.toLocaleTimeString('id-ID'),
+          date: now.toLocaleDateString('id-ID'),
+          region: getRegion(target)
+        });
+      } else {
+        toast.error(data.error || 'Gagal memulai blast.');
+      }
+    } catch (err) {
+      toast.error('Gagal menghubungi server.');
+    }
   };
+
+  const currentProgress = blastData.total > 0 ? (blastData.current / blastData.total) * 100 : 0;
 
   return (
     <div className="space-y-8 pb-20">
@@ -263,24 +274,39 @@ export const BadakWAPage: React.FC = () => {
               animate={{ opacity: 1, height: 'auto' }}
               className="space-y-6 pt-6 border-t border-white/5"
             >
-               {/* Progress & Steps */}
+               {/* Progress & Status Indicator */}
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                        <span>Overall Progress</span>
-                        <span className="text-brand-purple">{Math.floor(progress)}%</span>
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.2em]">
+                        <span className="text-slate-500">Blast Progress</span>
+                        <div className="flex items-center gap-2">
+                           <span className={cn(
+                             "px-2 py-0.5 rounded-full text-[8px] tracking-widest",
+                             blastData.status === 'running' ? "bg-brand-purple/20 text-brand-purple animate-pulse" :
+                             blastData.status === 'completed' ? "bg-emerald-500/20 text-emerald-500" :
+                             "bg-red-500/20 text-red-500"
+                           )}>
+                             {blastData.status.toUpperCase()}
+                           </span>
+                           <span className="text-brand-purple">{Math.floor(currentProgress)}%</span>
+                        </div>
                     </div>
                     <div className="h-3 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
                         <motion.div 
-                          className="h-full bg-brand-purple rounded-full shadow-[0_0_20px_rgba(168,85,247,0.6)]" 
-                          animate={{ width: `${progress}%` }}
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            blastData.status === 'running' ? "bg-brand-purple shadow-[0_0_20px_rgba(168,85,247,0.6)]" :
+                            blastData.status === 'completed' ? "bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.6)]" :
+                            "bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]"
+                          )}
+                          animate={{ width: `${currentProgress}%` }}
                         />
                     </div>
                     
                     <div className="space-y-2">
                        {steps.map((step, i) => (
                          <div key={i} className={`flex items-center gap-3 transition-all duration-300 ${i <= activeStep ? 'text-brand-purple opacity-100' : 'text-slate-600 opacity-40'}`}>
-                            <step.icon className={`w-4 h-4 ${i === activeStep ? 'animate-pulse' : ''}`} />
+                            <step.icon className={`w-4 h-4 ${i === activeStep && blastData.status === 'running' ? 'animate-pulse' : ''}`} />
                             <span className="text-[10px] font-black uppercase tracking-widest italic">{step.label}</span>
                             {i < activeStep && <CheckCircle className="w-3 h-3 ml-auto" />}
                          </div>
@@ -288,28 +314,30 @@ export const BadakWAPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Virtual Nodes */}
-                  <div className="bg-black/40 rounded-2xl p-4 border border-white/5 space-y-3">
+                  {/* Virtual Nodes / Success Counter */}
+                  <div className="bg-black/40 rounded-2xl p-4 border border-white/5 space-y-4">
                      <div className="flex items-center justify-between text-[8px] font-black text-slate-600 uppercase tracking-widest">
-                        <span>Cluster Nodes Status</span>
-                        <span>Load Balancing: Active</span>
+                        <span>Real-time Counter</span>
+                        <span className="text-emerald-500">Uptime: Active</span>
                      </div>
-                     <div className="grid grid-cols-6 gap-2">
-                        {Array.from({ length: 18 }).map((_, i) => (
-                          <motion.div 
-                            key={i}
-                            animate={{ 
-                              opacity: [0.3, 1, 0.3],
-                              backgroundColor: i <= (progress / 100) * 18 ? '#a855f7' : '#1e293b'
-                            }}
-                            transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }}
-                            className="aspect-square rounded-md shadow-inner"
-                          />
-                        ))}
+                     
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Success</p>
+                           <p className="text-xl font-black text-emerald-400 italic">{blastData.successCount}</p>
+                        </div>
+                        <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Failed</p>
+                           <p className="text-xl font-black text-red-400 italic">{blastData.failCount}</p>
+                        </div>
                      </div>
-                     <div className="pt-2 flex items-center gap-2 text-[8px] font-mono text-brand-purple/60">
-                        <Activity className="w-3 h-3" />
-                        <span>TX/RX: {Math.floor(progress * 132)} KB/s</span>
+
+                     <div className="pt-2 flex items-center justify-between text-[8px] font-mono text-brand-purple/60">
+                        <div className="flex items-center gap-2">
+                           <Activity className="w-3 h-3" />
+                           <span>TX: {blastData.current}/{blastData.total}</span>
+                        </div>
+                        <span>LOAD: {Math.floor(currentProgress)}%</span>
                      </div>
                   </div>
                </div>

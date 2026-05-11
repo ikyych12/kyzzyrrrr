@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { animeService } from '../services/animeService';
 import { Anime } from '../types';
-import { Card, Input, Badge, Button } from '../components/UI';
+import { Card, Input, Badge, Button, Skeleton } from '../components/UI';
 import { Search, TrendingUp, Calendar, Play, Loader2, Star, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -127,14 +127,19 @@ export const AnimeDiscoveryPage: React.FC = () => {
               </Link>
             </motion.div>
           ))}
+          
+          {/* Skeleton Loaders */}
+          {loading && Array.from({ length: 10 }).map((_, idx) => (
+            <div key={`skeleton-${idx}`} className="space-y-3">
+              <Skeleton className="aspect-[3/4] rounded-3xl" />
+              <div className="space-y-2 px-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            </div>
+          ))}
         </AnimatePresence>
       </div>
-
-      {loading && (
-        <div className="flex justify-center py-8">
-           <Loader2 className="w-8 h-8 animate-spin text-brand-sakura" />
-        </div>
-      )}
 
       {animes.length > 0 && !loading && (
         <div className="flex justify-center pt-8">

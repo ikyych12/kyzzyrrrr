@@ -92,3 +92,7 @@ export const Badge: React.FC<{ children: React.ReactNode; variant?: 'free' | 'pr
     </span>
   );
 };
+
+export const Skeleton: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={cn("animate-pulse bg-white/5 rounded-xl", className)} />
+);

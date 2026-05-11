@@ -8,7 +8,6 @@ import { AdminPanelPage } from './pages/AdminPanelPage';
 import { WhatsAppSettingsPage } from './pages/WhatsAppSettingsPage';
 import { DomainManagerPage } from './pages/DomainManagerPage';
 import { BadakWAPage } from './pages/BadakWAPage';
-import { WebToAPKPage } from './pages/WebToAPKPage';
 import { TutorialPage } from './pages/TutorialPage';
 import { TipsPage } from './pages/TipsPage';
 import { UnbandPage } from './pages/UnbandPage';
@@ -20,7 +19,9 @@ import { AnimeWatchPage } from './pages/AnimeWatchPage';
 import { NIKCheckerPage } from './pages/NIKCheckerPage';
 import { KyzzyStorePage } from './pages/KyzzyStorePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SupportPage } from './pages/SupportPage';
 import { DynamicTitle } from './components/DynamicTitle';
+import { FloatingPlayer } from './components/FloatingPlayer';
 
 export default function App() {
   return (
@@ -38,7 +39,6 @@ export default function App() {
             <Route path="/home" element={<HomePage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/badak-wa" element={<BadakWAPage />} />
-            <Route path="/web-to-apk" element={<WebToAPKPage />} />
             <Route path="/tutorial" element={<TutorialPage />} />
             <Route path="/tips" element={<TipsPage />} />
             <Route path="/unband" element={<UnbandPage />} />
@@ -47,6 +47,7 @@ export default function App() {
             <Route path="/anime" element={<AnimeDiscoveryPage />} />
             <Route path="/anime/:id" element={<AnimeWatchPage />} />
             <Route path="/nik-checker" element={<NIKCheckerPage />} />
+            <Route path="/support" element={<SupportPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/developer" element={<DeveloperPage />} />
             
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
+        <FloatingPlayer />
       </Router>
     </AuthProvider>
   );

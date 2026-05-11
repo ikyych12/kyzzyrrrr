@@ -11,9 +11,22 @@ export const ProtectedRoute: React.FC = () => {
   const { user, isLoading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
-  if (isLoading) return <div className="min-h-screen bg-brand-black flex items-center justify-center">
-    <div className="w-8 h-8 border-4 border-brand-purple border-t-transparent rounded-full animate-spin"></div>
-  </div>;
+  if (isLoading) return (
+    <div className="min-h-screen bg-brand-black flex flex-col items-center justify-center gap-6">
+      <div className="relative">
+        <div className="w-16 h-16 border-4 border-brand-purple/20 rounded-full"></div>
+        <div className="absolute top-0 w-16 h-16 border-4 border-brand-purple border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(168,85,247,0.5)]"></div>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <p className="font-display font-black text-xl uppercase italic tracking-[0.2em] text-brand-purple animate-pulse">Syncing Session</p>
+        <div className="flex gap-1">
+          <div className="w-1 h-1 bg-brand-purple rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+          <div className="w-1 h-1 bg-brand-purple rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+          <div className="w-1 h-1 bg-brand-purple rounded-full animate-bounce"></div>
+        </div>
+      </div>
+    </div>
+  );
 
   if (!user) return <Navigate to="/login" replace />;
 

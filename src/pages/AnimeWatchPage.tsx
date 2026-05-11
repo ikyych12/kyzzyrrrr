@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { animeService } from '../services/animeService';
 import { Anime } from '../types';
-import { Card, Badge, Button } from '../components/UI';
+import { Card, Badge, Button, Skeleton } from '../components/UI';
 import { Play, Star, Clock, Calendar, ChevronLeft, Loader2, Info, Share2, Heart, ExternalLink } from 'lucide-react';
 import { motion } from 'motion/react';
 import toast from 'react-hot-toast';
@@ -35,9 +35,29 @@ export const AnimeWatchPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-6">
-        <Loader2 className="w-16 h-16 animate-spin text-brand-sakura" />
-        <p className="font-display font-black text-2xl uppercase italic tracking-tighter text-brand-sakura animate-pulse">Syncing with Jikan Database...</p>
+      <div className="space-y-8 pb-20">
+        <Skeleton className="h-6 w-32" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="space-y-6">
+            <Skeleton className="aspect-[3/4] rounded-[2.5rem]" />
+            <Skeleton className="h-40 w-full" />
+          </div>
+          <div className="lg:col-span-2 space-y-8">
+            <div className="space-y-4">
+              <Skeleton className="h-16 w-3/4" />
+              <Skeleton className="h-6 w-1/4" />
+            </div>
+            <Skeleton className="aspect-video w-full rounded-[2rem]" />
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-48" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
